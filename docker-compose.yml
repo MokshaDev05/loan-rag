@@ -1,0 +1,166 @@
+# docker-compose.yml — local development stack
+#
+# Bring up all services:   docker compose up --build
+# Tear down + wipe volumes: docker compose down -v
+#
+# First run only — pull the LLM model (takes several minutes):
+#   docker compose exec ollama ollama pull llama3.2
+#
+# Run migrations manually (already runs automatically on api startup):
+#   docker compose exec api alembic upgrade head
+
+services:
+
+  # ── PostgreSQL with pgvector ──────────────────────────────────────────────
+  db:
+    # pgvector/pgvector is the official image maintained by the pgvector
+    # project. The pg16 tag tracks PostgreSQL 16 with the latest pgvector
+    # release. Using a versioned tag (not :latest) makes the build
+    # reproducible — :latest can silently upgrade the major PG version.
+    image: pgvector/pgvector:pg16
+
+    environment:
+      # ${VAR:-default} reads from .env or the shell environment, falling back
+      # to "loan_rag" if the variable is unset. POSTGRES_PASSWORD has no
+      # default intentionally: the container refuses to start if it is missing,
+      # which prevents accidentally running with an empty password.
+      POSTGRES_USER:     ${POSTGRES_USER:-loan_rag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB:       ${POSTGRES_DB:-loan_rag}
+
+    volumes:
+      # Named volume — data survives `docker compose down` but is wiped by
+      # `docker compose down -v`. Using a bind mount (./data:/var/...) is
+      # common in tutorials but causes permission problems on Linux because
+      # the postgres process runs as uid 999 inside the container.
+      - postgres_data:/var/lib/postgresql/data
+
+    ports:
+      # Expose 5432 so you can connect with psql or a GUI (TablePlus, DBeaver)
+      # from your host machine during development. Remove this in production —
+      # the database should not be reachable outside the Docker network.
+      - "5435:5432"
+
+    healthcheck:
+      # pg_isready exits 0 when the server is accepting connections.
+      # The api service will not start until this check passes, which
+      # prevents Alembic from trying to connect to a half-started database.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-loan_rag} -d ${POSTGRES_DB:-loan_rag}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      # start_period gives Postgres time to initialize on the very first run
+      # (creating the data directory, running initdb) before health checks fire.
+      start_period: 15s
+
+    # Restart the container automatically if it crashes. "unless-stopped"
+    # means it also restarts after a host reboot, but not if you manually
+    # run `docker compose stop`.
+    restart: unless-stopped
+
+    networks:
+      - loan_rag_net
+
+
+  # ── Ollama (local LLM server) ─────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+
+    volumes:
+      # Persist downloaded models across container restarts. Without this
+      # volume, every `docker compose up` would re-download gigabytes of
+      # model weights.
+      - ollama_data:/root/.ollama
+
+    ports:
+      # Expose 11434 so you can call Ollama directly from the host during
+      # development (curl http://localhost:11434/api/tags).
+      # Remove in production.
+      - "11434:11434"
+
+    healthcheck:
+      # /api/tags returns the list of locally available models.
+      # A 200 response means the server is up. The model does not need to be
+      # pulled for this check to pass — we only verify the process is alive.
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    restart: unless-stopped
+
+    networks:
+      - loan_rag_net
+
+
+  # ── FastAPI application ───────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Build only the "runtime" stage. Without this, Docker builds both
+      # stages but discards the builder image — which still wastes time
+      # on the model download if the runtime image is already cached.
+      target: runtime
+
+    # Load all variables from .env into the container environment.
+    # Variables set under `environment:` below take precedence over .env,
+    # which lets us override DATABASE_URL to use the Docker service name
+    # ("db") instead of "localhost".
+    env_file: .env
+
+    environment:
+      # "db" resolves to the postgres container's IP inside loan_rag_net.
+      # We override DATABASE_URL here rather than in .env because .env uses
+      # "localhost" for local development outside Docker.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-loan_rag}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-loan_rag}
+      # Same principle for Ollama — "ollama" resolves inside the network.
+      OLLAMA_BASE_URL: http://ollama:11434
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      db:
+        # "service_healthy" means Docker waits for the db healthcheck to pass
+        # before starting the api container. "service_started" (the default)
+        # only waits for the container process to launch, not for Postgres to
+        # actually accept connections.
+        condition: service_healthy
+      ollama:
+        # We use service_started for Ollama because the Ollama healthcheck
+        # can take up to 20 s on a cold start. The answer_generator service
+        # handles connection retries, so we do not need to block here.
+        condition: service_started
+
+    # Override the Dockerfile CMD to run migrations first.
+    # "&&" means uvicorn only starts if alembic succeeds — a failed migration
+    # exits the container instead of silently starting on a broken schema.
+    command:
+      - /bin/sh
+      - -c
+      - "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log"
+
+    restart: unless-stopped
+
+    networks:
+      - loan_rag_net
+
+
+# ── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  loan_rag_net:
+    # Bridge network is the default for single-host setups. All services
+    # can reach each other by service name (e.g. "db", "ollama").
+    # Services are not reachable from the host unless a port is published.
+    driver: bridge
+
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  # Declaring volumes here (rather than inline under each service) makes them
+  # visible in `docker volume ls` and lets multiple services share a volume
+  # if needed in the future.
+  postgres_data:
+  ollama_data:

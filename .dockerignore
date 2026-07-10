@@ -1,0 +1,91 @@
+# .dockerignore controls what is sent to the Docker daemon as the build context.
+# Excluding files here has two benefits:
+#   1. Faster builds — the daemon does not transfer excluded files over the socket.
+#   2. Smaller, safer images — excluded files cannot accidentally land in a layer.
+
+# ─── Python artefacts ────────────────────────────────────────────────────────
+# Generated at runtime; never needed inside the image.
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Build and distribution output.
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ─── Virtual environments ─────────────────────────────────────────────────────
+# The image builds its own isolated environment. Including a local venv would
+# bloat the build context by hundreds of megabytes and shadow installed packages.
+.venv/
+venv/
+env/
+ENV/
+
+# ─── Environment and secrets ──────────────────────────────────────────────────
+# .env contains passwords and API keys. It must never be copied into an image —
+# a pushed image would expose secrets to anyone who pulls it.
+# .env.* catches .env.local, .env.test, .env.staging, etc.
+# The negative pattern !.env.example re-includes that one file so developers
+# can see what variables are required without having actual values in the image.
+.env
+.env.*
+!.env.example
+
+# ─── Test infrastructure ──────────────────────────────────────────────────────
+# Test code and coverage data serve no purpose at runtime.
+tests/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# ─── Type checking and linting caches ─────────────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+
+# ─── Version control ──────────────────────────────────────────────────────────
+# The .git directory can be hundreds of megabytes in a mature repo. It also
+# exposes your full commit history inside the image.
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# ─── Development tooling ──────────────────────────────────────────────────────
+# Infrastructure-as-code, deployment scripts, and benchmarks are not
+# part of the running application.
+deploy/
+infrastructure/
+scripts/
+
+# ─── Editor and OS artefacts ──────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ─── Documentation ────────────────────────────────────────────────────────────
+# Markdown files and generated docs do not belong in a production image.
+*.md
+docs/
+
+# ─── Local model cache ────────────────────────────────────────────────────────
+# The Dockerfile downloads the model inside the builder stage and copies it
+# into the runtime image via COPY --from=builder. If a developer also has the
+# model cached locally at /app/models or .cache/, those local files must not
+# override what the builder stage produced.
+.cache/
+app/models/
+
+# ─── What is intentionally NOT ignored ───────────────────────────────────────
+# app/          — application source code (required)
+# alembic/      — migration files (required; startup command runs `alembic upgrade head`)
+# pyproject.toml — dependency manifest (required for pip-compile in builder)
