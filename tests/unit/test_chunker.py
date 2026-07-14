@@ -116,14 +116,12 @@ def test_tiny_tail_merged_into_previous():
 # ChunkData fields
 # ─────────────────────────────────────────
 
-def test_chunk_indices_are_sequential():
+def test_chunks_have_non_empty_content():
     text = "sentence number one. " * 60
     doc = _doc(text)
     chunks = chunk_document(doc)
-
-    for expected_index, chunk in enumerate(chunks):
-        # chunk_document returns a list; the caller assigns chunk_index
-        # so we just verify the list is not empty and content is non-empty
+    assert len(chunks) >= 1
+    for chunk in chunks:
         assert chunk.content
 
 

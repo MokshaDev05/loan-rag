@@ -6,6 +6,8 @@ Ollama is not used by these endpoints.
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 
 from tests.conftest import make_pdf
@@ -31,7 +33,7 @@ async def test_upload_response_contains_document_id(client):
         files={"file": ("loan.pdf", pdf, "application/pdf")},
     )).json()
     assert "document_id" in body
-    assert body["document_id"].startswith("DOC-") or len(body["document_id"]) > 4
+    uuid.UUID(body["document_id"])  # raises ValueError if not a valid UUID
 
 
 async def test_upload_reports_chunk_count(client):
@@ -138,11 +140,10 @@ async def test_search_result_has_required_fields(client):
 
 
 async def test_search_respects_top_k(client):
-    pdf = make_pdf(
-        "Loan amount is four hundred thousand dollars.",
-        "Interest rate is six point eight seven five percent.",
-        "Monthly payment is three thousand dollars.",
-    )
+    # Each page must be long enough that the document produces at least 2 chunks
+    # (chunker max is 800 chars). Three pages of ~350 chars each → ~1050 chars → 2 chunks.
+    page = "The borrower agrees to repay the principal loan amount together with all accrued interest. " * 4
+    pdf = make_pdf(page, page, page)
     await client.post(
         "/api/v1/documents/upload",
         files={"file": ("loan.pdf", pdf, "application/pdf")},
@@ -150,10 +151,10 @@ async def test_search_respects_top_k(client):
 
     body = (await client.post(
         "/api/v1/documents/search",
-        json={"query": "payment", "top_k": 2},
+        json={"query": "borrower repay principal", "top_k": 2},
     )).json()
 
-    assert len(body["results"]) <= 2
+    assert len(body["results"]) == 2
 
 
 async def test_search_restricted_to_document_id(client):

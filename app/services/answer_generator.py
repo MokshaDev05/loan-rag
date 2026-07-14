@@ -62,7 +62,10 @@ async def _generate_ollama(prompt: str) -> str:
             f"Ollama returned HTTP {exc.response.status_code}: {exc.response.text[:200]}"
         ) from exc
 
-    return resp.json().get("response", "").strip()
+    try:
+        return resp.json().get("response", "").strip()
+    except Exception as exc:
+        raise LLMUnavailableError(f"Ollama returned non-JSON response: {exc}") from exc
 
 
 async def _generate_bedrock(prompt: str) -> str:
@@ -82,8 +85,11 @@ async def _generate_bedrock(prompt: str) -> str:
             contentType="application/json",
             accept="application/json",
         )
-        result = json.loads(resp["body"].read())
-        return result["output"]["message"]["content"][0]["text"].strip()
+        try:
+            result = json.loads(resp["body"].read())
+            return result["output"]["message"]["content"][0]["text"].strip()
+        except (KeyError, IndexError, json.JSONDecodeError) as exc:
+            raise LLMUnavailableError(f"Unexpected Bedrock response shape: {exc}") from exc
 
     try:
         return await asyncio.to_thread(_invoke)
