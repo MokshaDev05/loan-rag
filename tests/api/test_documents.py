@@ -31,7 +31,7 @@ async def test_upload_response_contains_document_id(client):
         files={"file": ("loan.pdf", pdf, "application/pdf")},
     )).json()
     assert "document_id" in body
-    assert body["document_id"]  # non-empty
+    assert body["document_id"].startswith("DOC-") or len(body["document_id"]) > 4
 
 
 async def test_upload_reports_chunk_count(client):
@@ -60,7 +60,7 @@ async def test_upload_includes_text_preview(client):
         files={"file": ("preview.pdf", pdf, "application/pdf")},
     )).json()
     assert "text_preview" in body
-    assert len(body["text_preview"]) > 0
+    assert "Loan Number" in body["text_preview"]
 
 
 # ─────────────────────────────────────────

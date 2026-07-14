@@ -1,7 +1,7 @@
 import hashlib
 import logging
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
@@ -123,7 +123,7 @@ async def upload_document(
         page_count=pdf_doc.page_count,
         raw_text=pdf_doc.text,
         status=DocStatus.READY,
-        processed_at=datetime.utcnow(),
+        processed_at=datetime.now(timezone.utc).replace(tzinfo=None),
     )
 
     try:

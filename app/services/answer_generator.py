@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import List
@@ -73,7 +74,7 @@ async def _generate_bedrock(prompt: str) -> str:
         "inferenceConfig": {"maxTokens": 1024},
     })
 
-    try:
+    def _invoke() -> str:
         client = boto3.client("bedrock-runtime", region_name=settings.BEDROCK_REGION)
         resp = client.invoke_model(
             modelId=settings.BEDROCK_MODEL_ID,
@@ -83,6 +84,9 @@ async def _generate_bedrock(prompt: str) -> str:
         )
         result = json.loads(resp["body"].read())
         return result["output"]["message"]["content"][0]["text"].strip()
+
+    try:
+        return await asyncio.to_thread(_invoke)
     except ClientError as exc:
         raise LLMUnavailableError(
             f"Bedrock error: {exc.response['Error']['Code']}: {exc.response['Error']['Message']}"
