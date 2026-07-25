@@ -22,7 +22,6 @@ class Embedder:
         logger.info("embedder_created", extra={"model": model_name})
 
     async def initialize(self) -> None:
-        """Download (first run) and load the model into memory."""
         from sentence_transformers import SentenceTransformer  # noqa: PLC0415
 
         logger.info("embedder_loading", extra={"model": self._model_name})
@@ -33,12 +32,10 @@ class Embedder:
         logger.info("embedder_ready", extra={"model": self._model_name, "dims": self._DIMS})
 
     async def close(self) -> None:
-        """Release the model from memory."""
         self._model = None
         logger.info("embedder_closed", extra={"model": self._model_name})
 
     async def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        """Return one 384-dim vector per input string."""
         if not texts:
             return []
 
@@ -57,6 +54,5 @@ class Embedder:
         return vectors
 
     async def embed_text(self, text: str) -> list[float]:
-        """Convenience wrapper — embeds a single string."""
         results = await self.embed_batch([text])
         return results[0]

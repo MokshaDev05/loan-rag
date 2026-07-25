@@ -27,8 +27,7 @@ Question: {question}
 Answer:"""
 
 
-class LLMUnavailableError(Exception):
-    """Raised when the configured LLM backend is unreachable or returns an error."""
+class LLMUnavailableError(Exception): ...
 
 
 # Keep old name as alias so existing callers don't break.
@@ -102,7 +101,6 @@ async def _generate_bedrock(prompt: str) -> str:
 
 
 async def generate_answer(question: str, chunks: List[Chunk]) -> str:
-    """Generate a grounded answer from retrieved chunks using the configured LLM."""
     context = _build_context(chunks)
     prompt = _PROMPT.format(context=context, question=question)
 

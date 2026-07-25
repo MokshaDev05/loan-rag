@@ -16,17 +16,8 @@ _SEP_LEN = len(_PAGE_SEPARATOR)
 _METADATA_KEYS = ("Title", "Author", "Subject", "Creator", "Producer", "CreationDate")
 
 
-# ─────────────────────────────────────────
-# Exceptions
-# ─────────────────────────────────────────
+class PDFProcessingError(Exception): ...
 
-class PDFProcessingError(Exception):
-    """Raised when a PDF cannot be read or yields no extractable text."""
-
-
-# ─────────────────────────────────────────
-# Result types
-# ─────────────────────────────────────────
 
 @dataclass(frozen=True)
 class PageBoundary:
@@ -38,23 +29,17 @@ class PageBoundary:
 
 @dataclass(frozen=True)
 class PDFDocument:
-    """All extractable content from a PDF file."""
     text:            str
     page_count:      int
     page_boundaries: tuple[PageBoundary, ...]   # len == page_count, ordered by page_number
     metadata:        dict[str, str]
 
     def page_number_at(self, char_offset: int) -> Optional[int]:
-        """Return the 1-based page number that contains *char_offset*, or None."""
         for boundary in self.page_boundaries:
             if boundary.char_start <= char_offset < boundary.char_end:
                 return boundary.page_number
         return None
 
-
-# ─────────────────────────────────────────
-# Private helpers
-# ─────────────────────────────────────────
 
 def _clean(text: str) -> str:
     text = text.replace("\x00", "")                          # null bytes from some PDFs
@@ -72,10 +57,6 @@ def _extract_metadata(pdf: pdfplumber.PDF) -> dict[str, str]:
         if (value := raw.get(key))
     }
 
-
-# ─────────────────────────────────────────
-# Public API
-# ─────────────────────────────────────────
 
 def extract(file_bytes: bytes) -> PDFDocument:
     """Extract text, page boundaries, and metadata from PDF bytes.

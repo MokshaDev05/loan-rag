@@ -14,7 +14,6 @@ _MIN_CHARS = 50   # fragments shorter than this are absorbed into the previous c
 
 @dataclass
 class ChunkData:
-    """One text chunk ready to be written to the Chunk table."""
     content:     str
     char_start:  int
     char_end:    int

@@ -21,13 +21,7 @@ from app.docs import get_docs_html
 from app.services.embedder import Embedder
 
 
-# ─────────────────────────────────────────
-# Logging
-# ─────────────────────────────────────────
-
 class _JsonFormatter(logging.Formatter):
-    """Emit one JSON object per log record."""
-
     _SKIP = frozenset({
         "args", "created", "exc_info", "exc_text", "filename", "funcName",
         "levelname", "levelno", "lineno", "message", "module", "msecs", "msg",
@@ -63,10 +57,6 @@ _configure_logging()
 logger = logging.getLogger(__name__)
 
 
-# ─────────────────────────────────────────
-# Lifespan
-# ─────────────────────────────────────────
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger.info("startup", extra={"model": settings.EMBEDDING_MODEL})
@@ -86,10 +76,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     await app.state.embedder.close()
     await engine.dispose()
 
-
-# ─────────────────────────────────────────
-# OpenAPI metadata
-# ─────────────────────────────────────────
 
 _DESCRIPTION = """\
 **Loan Document Review RAG** is an AI-powered document analysis platform that
@@ -139,10 +125,6 @@ _TAGS_METADATA = [
 ]
 
 
-# ─────────────────────────────────────────
-# Application
-# ─────────────────────────────────────────
-
 app = FastAPI(
     title="Loan Document Review",
     description=_DESCRIPTION,
@@ -161,10 +143,6 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-# ─────────────────────────────────────────
-# Middleware  (last registered = outermost)
-# ─────────────────────────────────────────
 
 app.add_middleware(
     CORSMiddleware,
@@ -198,10 +176,6 @@ async def attach_request_context(request: Request, call_next: Any) -> Any:
     )
     return response
 
-
-# ─────────────────────────────────────────
-# Exception handlers
-# ─────────────────────────────────────────
 
 def _error_body(message: str, detail: Any, request: Request) -> dict[str, Any]:
     return {
@@ -271,10 +245,6 @@ async def handle_unhandled_exception(
     )
 
 
-# ─────────────────────────────────────────
-# Routes
-# ─────────────────────────────────────────
-
 @app.get("/docs", include_in_schema=False)
 async def custom_docs() -> HTMLResponse:
     return get_docs_html(
@@ -287,10 +257,6 @@ async def custom_docs() -> HTMLResponse:
 
 app.include_router(api_v1_router, prefix="/api/v1")
 
-
-# ─────────────────────────────────────────
-# Dev entrypoint
-# ─────────────────────────────────────────
 
 if __name__ == "__main__":
     uvicorn.run(

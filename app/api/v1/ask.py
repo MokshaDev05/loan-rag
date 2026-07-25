@@ -23,10 +23,6 @@ def _get_embedder(request: Request) -> Embedder:
     return request.app.state.embedder
 
 
-# ─────────────────────────────────────────
-# Request / Response models
-# ─────────────────────────────────────────
-
 class AskRequest(BaseModel):
     question: str
     document_id: Optional[uuid.UUID] = None
@@ -46,10 +42,6 @@ class AskResponse(BaseModel):
     citations: List[Citation]
 
 
-# ─────────────────────────────────────────
-# Endpoint
-# ─────────────────────────────────────────
-
 @router.post(
     "/ask",
     response_model=AskResponse,
@@ -60,12 +52,6 @@ async def ask(
     db: AsyncSession = Depends(get_db),
     embedder: Embedder = Depends(_get_embedder),
 ) -> AskResponse:
-    """Retrieve the most relevant chunks then generate a grounded answer via Ollama.
-
-    - **question**: natural language question about an uploaded document
-    - **document_id**: restrict retrieval to one document (optional)
-    - **top_k**: number of context chunks to pass to the LLM (default 5)
-    """
     query_vec = await embedder.embed_text(body.question)
 
     distance_col = Chunk.embedding.cosine_distance(query_vec)

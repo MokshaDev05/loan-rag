@@ -28,10 +28,6 @@ def get_embedder(request: Request) -> Embedder:
     return request.app.state.embedder
 
 
-# ─────────────────────────────────────────
-# Request / Response models
-# ─────────────────────────────────────────
-
 class UploadResponse(BaseModel):
     document_id: uuid.UUID
     filename: str
@@ -60,10 +56,6 @@ class SearchResponse(BaseModel):
     results: List[ChunkResult]
 
 
-# ─────────────────────────────────────────
-# Upload
-# ─────────────────────────────────────────
-
 @router.post(
     "/upload",
     response_model=UploadResponse,
@@ -75,10 +67,6 @@ async def upload_document(
     db: AsyncSession = Depends(get_db),
     embedder: Embedder = Depends(get_embedder),
 ) -> UploadResponse:
-    """Upload a PDF file. Extracts text, chunks it, embeds each chunk, and persists everything.
-
-    - **file**: a `.pdf` document, max 20 MB
-    """
     if file.content_type not in ("application/pdf", "application/octet-stream"):
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -172,10 +160,6 @@ async def upload_document(
     )
 
 
-# ─────────────────────────────────────────
-# Search
-# ─────────────────────────────────────────
-
 @router.post(
     "/search",
     response_model=SearchResponse,
@@ -186,12 +170,6 @@ async def search_chunks(
     db: AsyncSession = Depends(get_db),
     embedder: Embedder = Depends(get_embedder),
 ) -> SearchResponse:
-    """Return the top-k most similar chunks for a query string.
-
-    - **query**: natural language question or keyword phrase
-    - **document_id**: restrict search to one document (optional)
-    - **top_k**: number of results to return (1–20, default 5)
-    """
     query_vec = await embedder.embed_text(body.query)
 
     distance_col = Chunk.embedding.cosine_distance(query_vec)

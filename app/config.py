@@ -17,32 +17,26 @@ class Settings(BaseSettings):
         extra="ignore",         # silently ignore unknown vars in .env
     )
 
-    # ── Application ───────────────────────────────────────────────────────────
     APP_NAME: str = "Loan Document Review"
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
 
-    # ── Logging ───────────────────────────────────────────────────────────────
     LOG_LEVEL: str = "INFO"
 
-    # ── CORS ──────────────────────────────────────────────────────────────────
     # Accepts a JSON array or a comma-separated string in .env:
     #   CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
     #   CORS_ORIGINS=http://localhost:3000,http://localhost:8000
     CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8000"]
 
-    # ── Database ──────────────────────────────────────────────────────────────
     # Required — no default. Must use the asyncpg driver scheme:
     #   DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/loan_rag
     DATABASE_URL: str
     DB_POOL_SIZE: int = 5
     DB_MAX_OVERFLOW: int = 10
 
-    # ── Embeddings ────────────────────────────────────────────────────────────
     EMBEDDING_MODEL: str = "sentence-transformers/all-MiniLM-L6-v2"
 
-    # ── LLM provider ──────────────────────────────────────────────────────────
     # "ollama" for local dev; "bedrock" for production (no EC2 required).
     LLM_PROVIDER: Literal["ollama", "bedrock"] = "ollama"
 
@@ -53,8 +47,6 @@ class Settings(BaseSettings):
     # Amazon Bedrock (production)
     BEDROCK_MODEL_ID: str = "amazon.nova-lite-v1:0"
     BEDROCK_REGION: str = "us-east-2"
-
-    # ── Validators ────────────────────────────────────────────────────────────
 
     @field_validator("LOG_LEVEL", mode="before")
     @classmethod
@@ -95,8 +87,6 @@ class Settings(BaseSettings):
             )
         return url
 
-    # ── Convenience properties ─────────────────────────────────────────────────
-
     @property
     def is_development(self) -> bool:
         return self.ENVIRONMENT == "development"
@@ -107,22 +97,12 @@ class Settings(BaseSettings):
 
     @property
     def log_level_int(self) -> int:
-        """Return the numeric logging level for use with logging.setLevel()."""
         return logging.getLevelName(self.LOG_LEVEL)
 
 
 @lru_cache
 def get_settings() -> Settings:
-    """Return the cached Settings instance.
-
-    Using lru_cache means the .env file is read exactly once per process.
-    In tests, call get_settings.cache_clear() before overriding env vars
-    to force a fresh read.
-    """
     return Settings()
 
 
-# Module-level singleton.
-# Import as: from app.config import settings
-# FastAPI Depends: from app.config import get_settings; Depends(get_settings)
 settings: Settings = get_settings()

@@ -25,10 +25,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
 
 
-# ─────────────────────────────────────────
-# Enums
-# ─────────────────────────────────────────
-
 class DocStatus(str, enum.Enum):
     PENDING    = "pending"
     PROCESSING = "processing"
@@ -40,10 +36,6 @@ class MessageRole(str, enum.Enum):
     USER      = "user"
     ASSISTANT = "assistant"
 
-
-# ─────────────────────────────────────────
-# Models
-# ─────────────────────────────────────────
 
 class Document(Base):
     __tablename__ = "documents"

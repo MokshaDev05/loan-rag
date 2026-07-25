@@ -1,17 +1,6 @@
-"""Custom Swagger UI documentation page.
-
-Serves a dark-mode, fintech-styled API reference designed for loan officers,
-underwriters, and risk analysts.  Import get_docs_html() and mount it on a
-GET /docs route in main.py.
-"""
-
 import base64
 
 from fastapi.responses import HTMLResponse
-
-# ─────────────────────────────────────────
-# Favicon  (document + magnifying-glass motif, navy + gold)
-# ─────────────────────────────────────────
 
 _FAVICON_SVG = """\
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
@@ -34,10 +23,6 @@ _FAVICON_URI = (
     "data:image/svg+xml;base64,"
     + base64.b64encode(_FAVICON_SVG.encode()).decode()
 )
-
-# ─────────────────────────────────────────
-# CSS
-# ─────────────────────────────────────────
 
 _CSS = """
 /* ── Variables ──────────────────────────────────────────────────── */
@@ -747,10 +732,6 @@ html, body {
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #2d5280; }
 """
-
-# ─────────────────────────────────────────
-# HTML generator
-# ─────────────────────────────────────────
 
 def get_docs_html(
     *,
