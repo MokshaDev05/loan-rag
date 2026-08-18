@@ -42,9 +42,15 @@ COPY pyproject.toml ./
 # Pinned deps mean the image is reproducible: two builds from the same commit
 # produce the same bytes. Without pinning, a transitive dep update could
 # silently change behavior between builds.
-RUN pip install --no-cache-dir pip-tools \
-    && pip-compile pyproject.toml --quiet --output-file /tmp/requirements.txt \
-    && pip install --no-cache-dir -r /tmp/requirements.txt
+RUN printf 'torch==2.7.1\n' > /tmp/cpu-constraints.txt \
+    && pip install --no-cache-dir pip-tools \
+    && pip-compile pyproject.toml --quiet --constraint /tmp/cpu-constraints.txt --output-file /tmp/requirements.txt \
+    && pip install --no-cache-dir \
+        --index-url https://download.pytorch.org/whl/cpu \
+        "torch==2.7.1" \
+    && pip install --no-cache-dir \
+        -c /tmp/cpu-constraints.txt \
+        -r /tmp/requirements.txt
 
 # Copy source only after deps are installed. A code change now only invalidates
 # this layer and the one below — not the expensive pip install.

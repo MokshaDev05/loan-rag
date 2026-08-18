@@ -63,15 +63,21 @@ aws ecr create-repository \
 
 
 # ── 2. Docker build + push ────────────────────────────────────────────────────
-log "[2/13] Authenticating Docker with ECR..."
-aws ecr get-login-password --region "${AWS_REGION}" \
-  | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+if [[ "${SKIP_IMAGE_BUILD:-false}" == "true" ]]; then
+  log "[2/13] Using image already pushed to ${ECR_URI}:latest"
+else
+  log "[2/13] Authenticating Docker with ECR..."
+  if [[ "${SKIP_DOCKER_LOGIN:-false}" != "true" ]]; then
+    aws ecr get-login-password --region "${AWS_REGION}" \
+      | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+  fi
 
-log "[2/13] Building Docker image (first build ~10 min — downloads embedding model)..."
-docker build -t "${APP_NAME}:latest" "${SCRIPT_DIR}/.."
-docker tag  "${APP_NAME}:latest" "${ECR_URI}:latest"
-docker push "${ECR_URI}:latest"
-log "  Pushed: ${ECR_URI}:latest"
+  log "[2/13] Building Docker image (first build ~10 min — downloads embedding model)..."
+  docker build -t "${APP_NAME}:latest" "${SCRIPT_DIR}/.."
+  docker tag  "${APP_NAME}:latest" "${ECR_URI}:latest"
+  docker push "${ECR_URI}:latest"
+  log "  Pushed: ${ECR_URI}:latest"
+fi
 
 
 # ── 3. IAM roles ──────────────────────────────────────────────────────────────
